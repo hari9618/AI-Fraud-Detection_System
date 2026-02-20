@@ -6,12 +6,11 @@ import plotly.graph_objects as go
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix
 from mlxtend.frequent_patterns import apriori, association_rules
 
 
 # ----------------------------------------------------------
-# Page Config
+# PAGE CONFIG
 # ----------------------------------------------------------
 st.set_page_config(
     page_title="AI Fraud Intelligence System",
@@ -19,18 +18,12 @@ st.set_page_config(
     layout="wide"
 )
 
-st.markdown("""
-<style>
-.main {background-color: #0E1117;}
-h1, h2, h3 {color: #00F5FF;}
-</style>
-""", unsafe_allow_html=True)
-
 st.title("💳 AI-Powered Fraud Intelligence System")
 st.markdown("### Hybrid Model: Association Rule Mining + Machine Learning")
 
+
 # ----------------------------------------------------------
-# Upload Dataset Instead of Reading Local File
+# FILE UPLOADER
 # ----------------------------------------------------------
 uploaded_file = st.file_uploader(
     "📂 Upload Credit Card Dataset (CSV File)",
@@ -41,39 +34,54 @@ if uploaded_file is None:
     st.warning("Please upload the credit card dataset to continue.")
     st.stop()
 
+
+# ----------------------------------------------------------
+# LOAD DATA
+# ----------------------------------------------------------
 @st.cache_data
 def load_data(file):
-    return pd.read_csv(file)
+    df = pd.read_csv(file)
+    return df
+
 
 df = load_data(uploaded_file)
 
-if "Class" not in df.columns:
-    st.error("Dataset must contain 'Class' column.")
-    st.stop()
+# Validate required columns
+required_columns = ["Amount", "Class"]
+
+for col in required_columns:
+    if col not in df.columns:
+        st.error(f"Dataset must contain '{col}' column.")
+        st.stop()
+
+
+# Remove missing values if any
+df = df.dropna()
+
 
 # ----------------------------------------------------------
-# Train Optimized Model (Fast)
+# TRAIN MODEL (Optimized & Safe)
 # ----------------------------------------------------------
 @st.cache_resource
 def train_model(data):
 
-    # Sample to reduce training time
-    data_sample = data.sample(
-        min(40000, len(data)),
-        random_state=42
-    )
+    # Sample data (prevents heavy training)
+    sample_size = min(40000, len(data))
+    data_sample = data.sample(sample_size, random_state=42)
 
     X = data_sample.drop("Class", axis=1)
     y = data_sample["Class"]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
+        X,
+        y,
         test_size=0.2,
-        random_state=42
+        random_state=42,
+        stratify=y  # keeps fraud ratio balanced
     )
 
     model = RandomForestClassifier(
-        n_estimators=20,
+        n_estimators=25,
         max_depth=8,
         n_jobs=-1,
         random_state=42
@@ -86,30 +94,30 @@ def train_model(data):
 
 model, X_test, y_test = train_model(df)
 
+
 # ----------------------------------------------------------
-# Sidebar Navigation
+# SIDEBAR
 # ----------------------------------------------------------
 st.sidebar.title("Navigation")
 page = st.sidebar.radio(
     "Select Module",
-    ["📊 Dashboard",
-     "📈 Fraud Pattern Discovery",
-     "🤖 ML Prediction"]
+    ["📊 Dashboard", "📈 Fraud Pattern Discovery", "🤖 ML Prediction"]
 )
 
+
 # ==========================================================
-# 📊 DASHBOARD
+# DASHBOARD
 # ==========================================================
 if page == "📊 Dashboard":
 
-    total_tx = df.shape[0]
-    fraud_tx = df["Class"].sum()
+    total_tx = len(df)
+    fraud_tx = int(df["Class"].sum())
     fraud_rate = (fraud_tx / total_tx) * 100
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Transactions", total_tx)
     col2.metric("Fraud Cases", fraud_tx)
-    col3.metric("Fraud Rate (%)", f"{fraud_rate:.2f}%")
+    col3.metric("Fraud Rate (%)", f"{fraud_rate:.4f}%")
 
     st.markdown("---")
 
@@ -121,8 +129,9 @@ if page == "📊 Dashboard":
     )
     st.plotly_chart(fig, use_container_width=True)
 
+
 # ==========================================================
-# 📈 FRAUD PATTERN DISCOVERY
+# FRAUD PATTERN DISCOVERY
 # ==========================================================
 elif page == "📈 Fraud Pattern Discovery":
 
@@ -132,7 +141,7 @@ elif page == "📈 Fraud Pattern Discovery":
 
     df_copy["Amount_Category"] = pd.cut(
         df_copy["Amount"],
-        bins=[0, 50, 200, 1000, 5000],
+        bins=[0, 50, 200, 1000, df_copy["Amount"].max()],
         labels=["Low", "Medium", "High", "Very_High"]
     )
 
@@ -147,16 +156,18 @@ elif page == "📈 Fraud Pattern Discovery":
         use_colnames=True
     )
 
-    if not frequent_items.empty:
-
+    if frequent_items.empty:
+        st.warning("No frequent patterns detected.")
+    else:
         rules = association_rules(
             frequent_items,
             metric="lift",
             min_threshold=1
         )
 
-        if not rules.empty:
-
+        if rules.empty:
+            st.warning("No strong association rules found.")
+        else:
             rules_sorted = rules.sort_values(
                 by="lift",
                 ascending=False
@@ -172,18 +183,13 @@ elif page == "📈 Fraud Pattern Discovery":
             )
             st.plotly_chart(fig, use_container_width=True)
 
-        else:
-            st.warning("No strong association rules found.")
-
-    else:
-        st.warning("No frequent patterns detected.")
 
 # ==========================================================
-# 🤖 ML PREDICTION
+# ML PREDICTION
 # ==========================================================
 elif page == "🤖 ML Prediction":
 
-    st.subheader("Optimized Random Forest Fraud Detection")
+    st.subheader("Random Forest Fraud Detection")
 
     accuracy = model.score(X_test, y_test)
     st.success(f"Model Accuracy: {accuracy:.4f}")
