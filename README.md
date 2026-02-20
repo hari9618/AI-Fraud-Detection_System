@@ -13,7 +13,7 @@ An end-to-end Machine Learning web application that detects fraudulent credit ca
 
 🔗 Streamlit App: https://ai-fraud-detectionsystem-dzmoujfapu57gk7hne8avv.streamlit.app/
 
-🔗 GitHub Repository: 
+🔗 GitHub Repository: https://github.com/hari9618/AI-Fraud-Detection_System
 
 ---
 
