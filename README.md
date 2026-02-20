@@ -164,7 +164,7 @@ Deployment steps:
 
 Thota Hari Krishna 
 LinkedIn: https://www.linkedin.com/public-profile/settings/?trk=d_flagship3_profile_self_view_public_profile&lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base%3BzlUYiWWNTMa0K6J65bGYWg%3D%3D 
-GitHub: (Add your GitHub profile link)
+GitHub: https://github.com/hari9618
 
 ---
 
